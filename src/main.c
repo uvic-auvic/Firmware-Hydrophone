@@ -14,8 +14,6 @@
 #include "main.h"
 #define ARRAYSIZE 8
 volatile uint16_t ADC_values[ARRAYSIZE];
-volatile uint32_t status = 0;
-			
 
 void ADCInit(void);
 void DMAInit(void);
@@ -27,28 +25,17 @@ uint8_t index;
 ADCInit();
 DMAInit();
 
-//Enable DMA2 Channel transfer
-//DMA_Cmd(DMA2_Channel1, ENABLE);
+
 //Start ADC1 Software Conversion
 ADC_SoftwareStartConv(ADC1);
-//wait for DMA complete
-//while (!status){};
-//ADC_SoftwareStartConvCmd(ADC1, DISABLE);
-//print averages
-/*for(index = 0; index<8; index++)
-	{
-	printf("ch%d = %d ",index, ADC_values[index]);
-	}*/
-for(index = 0; index<8; index++){
-	printf("\r\n ADC value on ch%d = %d\r\n",
-			index, (uint16_t)((ADC_values[index]+ADC_values[index+8]
-					+ADC_values[index+16]+ADC_values[index+24])/4));
-}
 
 
 while (1)
   {
-	//interrupts
+	for(index = 0; index<8; index++)
+		{
+		printf("ch%d = %d ",index, ADC_values[index]);
+		}
   }
 }
 
@@ -64,7 +51,7 @@ void ADCInit(void){
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
 	/*enable peripheral clock for ADC1 */
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE); //double check!
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
 
 	ADC_InitTypeDef ADC_InitStructure;
 	//ADC1 configuration
@@ -75,7 +62,7 @@ void ADCInit(void){
 	//We will convert multiple channels
 	ADC_InitStructure.ADC_ScanConvMode = ENABLE;
 	//we will convert one time
-	ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;//!
+	ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;
 	//select no external triggering
 	ADC_InitStructure.ADC_ExternalTrigConvEdge = 0;
 	ADC_InitStructure.ADC_ExternalTrigConv = 0;
@@ -86,9 +73,8 @@ void ADCInit(void){
 
 	//load structure values to control and status registers
 	ADC_Init(ADC1, &ADC_InitStructure);
-	//wake up temperature sensor
-	//ADC_TempSensorVrefintCmd(ENABLE);
-	//configure each channel
+
+	//channel configuration
 	ADC_RegularChannelConfig(ADC1, ADC_Channel_0, 1, ADC_SampleTime_56Cycles);
 	ADC_RegularChannelConfig(ADC1, ADC_Channel_1, 2, ADC_SampleTime_56Cycles);
 	ADC_RegularChannelConfig(ADC1, ADC_Channel_2, 3, ADC_SampleTime_56Cycles);
