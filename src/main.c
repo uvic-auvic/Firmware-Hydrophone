@@ -15,6 +15,8 @@
 #define ARRAYSIZE 8
 #define BaudRate 9600
 volatile uint16_t ADC_values[ARRAYSIZE];
+volatile uint16_t ADC_values2[ARRAYSIZE];
+int dma2_status = 0;
 
 void ADCInit(void);
 void DMA2Init(void); //peripheral to memory
@@ -25,7 +27,6 @@ void GPIOInit(void);
 
 int main(void)
 {
-
 GPIOInit();
 ADCInit();
 DMA2Init();
@@ -58,15 +59,29 @@ void GPIOInit(void){
 	/**
 	* Configuring GPIOA for USART
 	*/
-	GPIO_PinAFConfig(GPIOA, GPIO_PinSource9, GPIO_AF_USART2);
-	GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_USART2);
+//	GPIO_PinAFConfig(GPIOA, GPIO_PinSource9, GPIO_AF_USART2);
+//	GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_USART2);
+//	// Initialize pins as alternating function
+//	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_10;
+//	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+//	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+//	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+//	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+//	GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+	//Using PD5 and PD6 instead for USART2
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+
+	GPIO_PinAFConfig(GPIOD, GPIO_PinSource5, GPIO_AF_USART2);
+	GPIO_PinAFConfig(GPIOD, GPIO_PinSource6, GPIO_AF_USART2);
 	// Initialize pins as alternating function
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_10;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5 | GPIO_Pin_6;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
-	GPIO_Init(GPIOA, &GPIO_InitStructure);
+	GPIO_Init(GPIOD, &GPIO_InitStructure);
+
 }
 
 void ADCInit(void){
@@ -150,8 +165,12 @@ void DMA2Init(void){
 	DMA_InitStructure.DMA_BufferSize = ARRAYSIZE;
 	//source and destination start addresses
 	DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&ADC1->DR;
-	DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)&ADC_values[0]; //[0] ?
-	//send values to DMA registers
+	DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)&ADC_values[0];
+
+	//CONFIGURE DOUBLE BUFFER MODE, MEMORY0BASEADDR configured as current address
+	DMA_DoubleBufferModeConfig(DMA2_Stream0,&ADC_values2, DMA_Memory_0);
+	DMA_DoubleBufferModeCmd(DMA2_Stream0, ENABLE);
+
 	DMA_Init(DMA2_Stream0, &DMA_InitStructure);
 	// Enable DMA2 Channel Transfer Complete interrupt
 	DMA_ITConfig(DMA2_Stream0, DMA_IT_TC, ENABLE);
@@ -177,8 +196,8 @@ void DMA1Init(void) {
 	//medium priority
 	DMA_InitStructure.DMA_Priority = DMA_Priority_High;
 	//source and destination data size word=32bit
-	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
-	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
+	DMA_InitStructure.DMA_PeripheralDataSize = DMA_MemoryDataSize_Byte;
+	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
 	//automatic memory destination increment enable.
 	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
 	//source address increment disable
@@ -207,7 +226,7 @@ void NVICInit(void){
 	NVIC_Init(&NVIC_InitStructure);
 
 	//Enable UART channel IRQ Channel */
-	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannel = DMA2_Stream6_IRQn;// USART2_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
@@ -236,6 +255,35 @@ void UARTInit(void){
 	USART_InitStruct.USART_StopBits = USART_StopBits_1;
 	USART_InitStruct.USART_WordLength = USART_WordLength_8b;
 	USART_Init(USART2, &USART_InitStruct);
+
+	USART_ClockInitTypeDef USART_InitStructure;
+	USART_InitStructure.USART_Clock = USART_Clock_Disable;
+	USART_InitStructure.USART_CPOL = USART_CPOL_Low;
+	USART_InitStructure.USART_CPHA = USART_CPHA_2Edge;
+	USART_InitStructure.USART_LastBit = USART_LastBit_Disable;
+	USART_Init(USART2, &USART_InitStructure);
+
+	USART_DMACmd(USART2, (USART_DMAReq_Rx | USART_DMAReq_Tx), ENABLE);
 	USART_Cmd(USART2, ENABLE);
-	USART_DMACmd(USART2, USART_DMAReq_Tx, ENABLE);
 }
+void DMA2_Stream0_IRQHandler(void)
+{
+	if(DMA_GetITStatus(DMA2_Stream0, DMA_IT_HTIF0))
+	{
+		dma2_status = 2;
+	}
+	if(DMA_GetITStatus(DMA2_Stream0, DMA_IT_TCIF0))
+	{
+		dma2_status = 1;
+	}
+	DMA_ClearITPendingBit(DMA2_Stream0, DMA_IT_TCIF0 | DMA_IT_HTIF0);
+	DMA_ClearFlag(DMA2_Stream0, DMA_IT_TCIF0 | DMA_IT_HTIF0);
+}
+///*wait for DMA transfer to be done*/
+//while(dma2_status == 0) {}
+//
+//for(int i = 0, i < ARRAYSIZE, i++)
+//{
+//	//destination[i]=source[i];
+//}
+
