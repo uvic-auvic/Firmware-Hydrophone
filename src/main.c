@@ -12,9 +12,24 @@
 #include "stm32f4xx_adc.h"
 #include "stm32f4xx_usart.h"
 #include "main.h"
+#include "arm_math.h"
+
+#include "arm_common_tables.h"
+#include "arm_fft_bin_data.h"
+
 #define ARRAYSIZE 8
 #define BaudRate 9600
+
 volatile uint16_t ADC_values[ARRAYSIZE];
+
+static float32_t testOutput[4096];
+static float32_t magOutput[4096];
+
+uint32_t fftSize;
+uint32_t ifftFlag;
+
+float32_t max;
+uint32_t max_index;
 
 void ADCInit(void);
 void DMA2Init(void); //peripheral to memory
@@ -34,6 +49,7 @@ UARTInit();
 DMA1Init();
 //Start ADC1 Software Conversion
 ADC_SoftwareStartConv(ADC1);
+
 
 
 while (1)
