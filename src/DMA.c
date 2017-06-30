@@ -1,4 +1,5 @@
 #include "stm32f4xx_usart.h"
+#include "DMA.h"
 
 #define ARRAYSIZE 8
 
@@ -101,6 +102,7 @@ static void Configure_NVIC_DMA(void){
 extern void DMA_init(void){
 	Configure_DMA2();
 	Configure_DMA1();
+	Configure_NVIC_DMA();
 }
 
 void DMA2_Stream0_IRQHandler(void)

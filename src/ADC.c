@@ -1,4 +1,5 @@
 #include "stm32f4xx_adc.h"
+#include "ADC.h"
 
 static void Configure_ADC(void){
 	/*enable peripheral clock for ADC1 */
