@@ -52,17 +52,65 @@ static void Configure_GPIO_USART2(){
 }
 
 static void Configure_NVIC_USART2(){
-	//Enable UART channel IRQ Channel */
+	//Enable UART DMA channel IRQ Channel */
 	NVIC_InitTypeDef NVIC_InitStructure;
 	NVIC_InitStructure.NVIC_IRQChannel = DMA2_Stream6_IRQn;// USART2_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
+
+	// Enable UART2 IRQ Channel
+	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+
 }
 
 extern void UART_init(){
 	Configure_GPIO_USART2();
 	Configure_NVIC_USART2();
 	Configure_USART2();
+}
+
+void USART2_IRQHandler(void){
+	uint8_t chartoreceive = 0;
+	static uint8_t output_idx = 0;
+
+
+	//Sending out the string
+	if((USART2->ISR & USART_ISR_TC) == USART_ISR_TC)
+	{
+		//The reason why we update the output_idx before code is because this happens
+		//after the first transfer is complete as the first transfer is loaded in else where
+		bytes_to_send--;
+		output_idx++;
+		if(bytes_to_send == 0)
+		{
+			USART1->ICR |= USART_ICR_TCCF; /* Clear transfer complete flag */
+			output_idx = 0;
+			//if the buffer is not empty pop the next item off and keep going
+			if(outputBuffer.size != 0){
+				bytes_to_send = Buffer_pop(&outputBuffer, stringtosend);
+				USART1->TDR = stringtosend[0]; /* Will initialize TC if TXE */
+			}
+		}
+		else
+		{
+			/* clear transfer complete flag and fill TDR with a new char */
+			USART1->TDR = stringtosend[output_idx];
+		}
+	}
+
+	else if((USART1->ISR & USART_ISR_RXNE) == USART_ISR_RXNE)
+	{
+	chartoreceive = (uint8_t)(USART1->RDR); /* Receive data, clear flag */
+	new_char_recv(chartoreceive);
+	}
+	else
+	{
+		  NVIC_DisableIRQ(USART1_IRQn); /* Disable USART1_IRQn */
+	}
 }
