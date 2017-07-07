@@ -1,18 +1,8 @@
 #include "stm32f4xx_usart.h"
+#include "stm32f4xx.h"
 
 static void Configure_USART2(void){
-	RCC_APB2PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
-	/**
-	 * Set Baudrate to value you pass to function
-	 * Disable Hardware Flow control
-	 * Set Mode To TX and RX, so USART will work in full-duplex mode
-	 * Disable parity bit
-	 * Set 1 stop bit
-	 * Set Data bits to 8
-	 *
-	 * Initialize USART2
-	 * Activate USART2
-	 */
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
 	USART_InitTypeDef USART_InitStruct;
 
 	USART_InitStruct.USART_BaudRate = 9600;
@@ -23,20 +13,34 @@ static void Configure_USART2(void){
 	USART_InitStruct.USART_WordLength = USART_WordLength_8b;
 	USART_Init(USART2, &USART_InitStruct);
 
-	USART_ClockInitTypeDef USART_ClockInitStruct;
+	/*USART_ClockInitTypeDef USART_ClockInitStruct;
 	USART_ClockInitStruct.USART_Clock = USART_Clock_Disable;
 	USART_ClockInitStruct.USART_CPOL = USART_CPOL_Low;
 	USART_ClockInitStruct.USART_CPHA = USART_CPHA_2Edge;
 	USART_ClockInitStruct.USART_LastBit = USART_LastBit_Disable;
-	USART_ClockInit(USART2, &USART_ClockInitStruct);
+	USART_ClockInit(USART2, &USART_ClockInitStruct);*/
 
 	USART_DMACmd(USART2, (USART_DMAReq_Rx | USART_DMAReq_Tx), ENABLE);
+	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
 	USART_Cmd(USART2, ENABLE);
 }
 
 static void Configure_GPIO_USART2(){
 	GPIO_InitTypeDef GPIO_InitStructure; //Variable used to setup the GPIO pins
 
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2 | GPIO_Pin_3;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource2, GPIO_AF_USART2); // TX
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource3, GPIO_AF_USART2); // RX
+
+	/*
 	//Using PD5 and PD6 instead for USART2
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
 
@@ -49,16 +53,17 @@ static void Configure_GPIO_USART2(){
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
 	GPIO_Init(GPIOD, &GPIO_InitStructure);
+*/
 }
 
 static void Configure_NVIC_USART2(){
 	//Enable UART DMA channel IRQ Channel */
 	NVIC_InitTypeDef NVIC_InitStructure;
-	NVIC_InitStructure.NVIC_IRQChannel = DMA2_Stream6_IRQn;// USART2_IRQn;
+	/*NVIC_InitStructure.NVIC_IRQChannel = DMA2_Stream6_IRQn;// USART2_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
+	NVIC_Init(&NVIC_InitStructure);*/
 
 	// Enable UART2 IRQ Channel
 	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
@@ -70,47 +75,15 @@ static void Configure_NVIC_USART2(){
 }
 
 extern void UART_init(){
+	Configure_USART2();
 	Configure_GPIO_USART2();
 	Configure_NVIC_USART2();
-	Configure_USART2();
 }
 
 void USART2_IRQHandler(void){
-	uint8_t chartoreceive = 0;
-	static uint8_t output_idx = 0;
-
-
-	//Sending out the string
-	if((USART2->ISR & USART_ISR_TC) == USART_ISR_TC)
-	{
-		//The reason why we update the output_idx before code is because this happens
-		//after the first transfer is complete as the first transfer is loaded in else where
-		bytes_to_send--;
-		output_idx++;
-		if(bytes_to_send == 0)
-		{
-			USART1->ICR |= USART_ICR_TCCF; /* Clear transfer complete flag */
-			output_idx = 0;
-			//if the buffer is not empty pop the next item off and keep going
-			if(outputBuffer.size != 0){
-				bytes_to_send = Buffer_pop(&outputBuffer, stringtosend);
-				USART1->TDR = stringtosend[0]; /* Will initialize TC if TXE */
-			}
-		}
-		else
-		{
-			/* clear transfer complete flag and fill TDR with a new char */
-			USART1->TDR = stringtosend[output_idx];
-		}
-	}
-
-	else if((USART1->ISR & USART_ISR_RXNE) == USART_ISR_RXNE)
-	{
-	chartoreceive = (uint8_t)(USART1->RDR); /* Receive data, clear flag */
-	new_char_recv(chartoreceive);
-	}
-	else
-	{
-		  NVIC_DisableIRQ(USART1_IRQn); /* Disable USART1_IRQn */
+	if( USART_GetITStatus(USART2, USART_IT_RXNE) ){
+		char recv = USART_ReceiveData(USART2);
+		while( !(USART2->SR & 0x00000040) );
+		USART_SendData(USART2, recv);
 	}
 }

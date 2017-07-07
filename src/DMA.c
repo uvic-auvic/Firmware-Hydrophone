@@ -80,7 +80,7 @@ static void Configure_DMA2(void) {
 	DMA_InitStructure.DMA_BufferSize = ARRAYSIZE;
 	//source and destination start addresses
 	DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&USART2->DR;
-	DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)&ADC_values[0]; //should still be the same from DMA2
+	DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)&ADC_values[0]; //needs a buffer
 	//send values to DMA registers
 	DMA_Init(DMA1_Stream6, &DMA_InitStructure);
 	// Enable DMA2 Channel Transfer Complete interrupt
@@ -101,6 +101,7 @@ static void Configure_NVIC_DMA(void){
 extern void DMA_init(void){
 	Configure_DMA2();
 	Configure_DMA1();
+	Configure_NVIC_DMA();
 }
 
 void DMA2_Stream0_IRQHandler(void)
