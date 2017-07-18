@@ -1,98 +1,121 @@
 #include "stm32f4xx_usart.h"
 #include "DMA.h"
 
-#define ARRAYSIZE 8
+volatile uint16_t ADC_values[ARRAYSIZE] = {1, 2, 3, 4, 5, 6, 7, 8};
+volatile uint16_t Buffer[ARRAYSIZE + 2];
+volatile uint16_t fft[ARRAYSIZE + 2];
+volatile uint8_t dma_state = 0;
 
-volatile uint16_t ADC_values[ARRAYSIZE];
-volatile uint16_t ADC_values2[ARRAYSIZE];
-int dma2_status = 0;
-
-static void Configure_DMA1(void){
+static void Configure_DMA2_Stream2(void){
 	//enable DMA2 clock
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
-	//create DMA structure
-	DMA_InitTypeDef  DMA_InitStructure;
-	//reset DMA2 channe1 to default values;
-	DMA_DeInit(DMA2_Stream0);
 
-	DMA_InitStructure.DMA_Channel = DMA_Channel_0;
-	DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Disable;  //not using FIFO
-	DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_HalfFull; //not using FIFO
-	DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;
-	DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
+	//reset DMA2 stream 1 to default values;
+	DMA_DeInit(DMA2_Stream2);
 
-	//setting circular mode
-	DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
-	//medium priority
-	DMA_InitStructure.DMA_Priority = DMA_Priority_High;
-	//source and destination data size word=32bit
-	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
-	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
-	//automatic memory destination increment enable.
-	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
-	//source address increment disable
-	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
-	//Location assigned to peripheral register will be source
-	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
-	//chunk of data to be transfered
-	DMA_InitStructure.DMA_BufferSize = ARRAYSIZE;
-	//source and destination start addresses
-	DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&ADC1->DR;
-	DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)&ADC_values[0];
+	// Select stream 2 channel 6, in circular mode, with high priority,
+	// peripheral-to-memory, and enable transfer complete flag
+	DMA2_Stream2->CR |= DMA_SxCR_CHSEL_2 | DMA_SxCR_CHSEL_1 | DMA_SxCR_PL_1 | DMA_SxCR_PL_0| DMA_SxCR_CIRC;
+	DMA2_Stream2->CR |= DMA_SxCR_TCIE;
 
-	//CONFIGURE DOUBLE BUFFER MODE, MEMORY0BASEADDR configured as current address
-	DMA_DoubleBufferModeConfig(DMA2_Stream0,&ADC_values2, DMA_Memory_0);
-	DMA_DoubleBufferModeCmd(DMA2_Stream0, ENABLE);
+	// Configure both source and destination to half-word (2 bytes)
+	DMA2_Stream2->CR |= DMA_SxCR_MSIZE_1 | DMA_SxCR_PSIZE_1;
 
-	DMA_Init(DMA2_Stream0, &DMA_InitStructure);
-	// Enable DMA2 Channel Transfer Complete interrupt
-	DMA_ITConfig(DMA2_Stream0, DMA_IT_TC, ENABLE);
-	DMA_Cmd(DMA2_Stream0, ENABLE); //Enable the DMA2 - Stream 0
+	// Enable auto-increment of source and destination pointers
+	DMA2_Stream2->CR |= DMA_SxCR_MINC | DMA_SxCR_PINC;
+
+	// Configure the number of bytes to send per transfer
+	DMA2_Stream2->NDTR = ARRAYSIZE;
+
+	// Select the source address for memory-to-memory mode
+	DMA2_Stream2->PAR = (uint32_t)ADC_values;
+
+	// Select the destination address for memory-to-memory mode
+	DMA2_Stream2->M0AR = (uint32_t)Buffer;
+
+	// Enable DMA2
+	DMA2_Stream2->CR |= DMA_SxCR_EN;
 }
 
-static void Configure_DMA2(void) {
+static void Configure_DMA2_Stream1(void){
 	//enable DMA2 clock
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
+
+	//reset DMA2 stream 1 to default values;
+	DMA_DeInit(DMA2_Stream1);
+
+	// Select sream 1 channel 6, in circular mode, with high priority,
+	// peripheral-to-memory, and enable transfer complete flag
+	DMA2_Stream1->CR |= DMA_SxCR_CHSEL_2 | DMA_SxCR_CHSEL_1 | DMA_SxCR_PL_1 | DMA_SxCR_PL_0| DMA_SxCR_CIRC;
+	DMA2_Stream1->CR |= DMA_SxCR_TCIE;
+
+	// Configure both source and destination to half-word (2 bytes)
+	DMA2_Stream1->CR |= DMA_SxCR_MSIZE_1 | DMA_SxCR_PSIZE_1;
+
+	// Enable auto-increment of source and destination pointers
+	DMA2_Stream1->CR |= DMA_SxCR_MINC | DMA_SxCR_PINC;
+
+	// Configure the number of bytes to send per transfer
+	DMA2_Stream1->NDTR = ARRAYSIZE;
+
+	// Select the source address for memory-to-memory mode
+	DMA2_Stream1->PAR = (uint32_t)ADC_values;
+
+	// Select the destination address for memory-to-memory mode
+	DMA2_Stream1->M0AR = (uint32_t)Buffer;
+
+	// Enable DMA2
+	DMA2_Stream1->CR |= DMA_SxCR_EN;
+}
+
+static void Configure_DMA1(void) {
+	//enable DMA1 clock
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA1, ENABLE);
-	//create DMA structure
-	DMA_InitTypeDef  DMA_InitStructure;
-	//reset DMA2 channel to default values;
+
+	//reset DMA1 channel to default values;
 	DMA_DeInit(DMA1_Stream6); //stream 6 for usart2 tx
 
-	DMA_InitStructure.DMA_Channel = DMA_Channel_4;
-	DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Disable;
-	DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_HalfFull;
-	DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;
-	DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
+	// Select stream6 channel 4, in double-buffer mode, high priority,
+	// memory-to-peripheral, and enable transfer-complete interrupt
+	DMA1_Stream6->CR |= DMA_SxCR_CHSEL_2 | DMA_SxCR_DBM | DMA_SxCR_PL_1 | DMA_SxCR_DIR_0 | DMA_SxCR_TCIE;
 
-	//setting circular mode
-	DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
-	//medium priority
-	DMA_InitStructure.DMA_Priority = DMA_Priority_High;
-	//source and destination data size word=32bit
-	DMA_InitStructure.DMA_PeripheralDataSize = DMA_MemoryDataSize_Byte;
-	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
-	//automatic memory destination increment enable.
-	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
-	//source address increment disable
-	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
-	//Location assigned to peripheral register will be source
-	DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral ;
-	//chunk of data to be transfered
-	DMA_InitStructure.DMA_BufferSize = ARRAYSIZE;
-	//source and destination start addresses
-	DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&USART2->DR;
-	DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)&ADC_values[0]; //needs a buffer
-	//send values to DMA registers
-	DMA_Init(DMA1_Stream6, &DMA_InitStructure);
-	// Enable DMA2 Channel Transfer Complete interrupt
-	DMA_ITConfig(DMA1_Stream6, DMA_IT_TC, ENABLE);
-	DMA_Cmd(DMA1_Stream6, ENABLE);
+	// Configure both source and destination to half-word (2 bytes)
+	DMA1_Stream6->CR |= DMA_SxCR_MSIZE_1 | DMA_SxCR_PSIZE_1;
+
+	// Enable auto-increment of source and destination pointers
+	DMA1_Stream6->CR |= DMA_SxCR_MINC | DMA_SxCR_PINC;
+
+	// Specify the number of half-words to use per transaction
+	DMA1_Stream6->NDTR = ARRAYSIZE;
+
+	// Select the destination address for the USART2 TX peripheral
+	DMA1_Stream6->PAR = (uint32_t)&(USART2->DR);
+
+	// Select the source address for the raw data
+	DMA1_Stream6->M0AR = (uint32_t)Buffer;
+
+	// Select the source address for the fft data
+	DMA1_Stream6->M1AR = (uint32_t)fft;
 }
 
 static void Configure_NVIC_DMA(void){
-	//Enable DMA2 channel IRQ Channel */
+	// Enable IRQ for grabbing data from ADC pins
 	NVIC_InitTypeDef NVIC_InitStructure;
-	NVIC_InitStructure.NVIC_IRQChannel = DMA2_Stream0_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannel = DMA2_Stream1_IRQn; // TIM1_CH1
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+
+	// Enable IRQ for grabbing data from ADC pins
+	NVIC_InitStructure.NVIC_IRQChannel = DMA2_Stream2_IRQn; // TIM1_CH2
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+
+	// Enable IRQ for sending data to USART2 TX
+	NVIC_InitStructure.NVIC_IRQChannel = DMA1_Stream6_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
@@ -100,23 +123,76 @@ static void Configure_NVIC_DMA(void){
 }
 
 extern void DMA_init(void){
-	Configure_DMA2();
-	Configure_DMA1();
+	Configure_DMA2_Stream2();
+	//Configure_DMA2_Stream1();
+	//Configure_DMA1();
 	Configure_NVIC_DMA();
 }
 
-void DMA2_Stream0_IRQHandler(void)
+void DMA2_Stream1_IRQHandler(void)
 {
-	if(DMA_GetITStatus(DMA2_Stream0, DMA_IT_HTIF0))
-	{
-		dma2_status = 2;
+	if(DMA_GetITStatus(DMA2_Stream1, DMA_IT_TCIF1)){
+		int i = 0;
+		for(i = 0; i < ARRAYSIZE; i++){
+			ADC_values[i]++;
+		}
+/*
+		// Change to state 1
+		dma_state = 1;
+
+		// Disable transfer on this DMA controller
+		DMA2_Stream1->CR &= ~DMA_SxCR_EN;
+
+		// Select mem0 for double-buffer, and then enable DMA1
+		DMA1_Stream6->CR &= ~DMA_SxCR_CT;
+		DMA1_Stream6->CR |= DMA_SxCR_EN;*/
+
+		DMA_ClearITPendingBit(DMA2_Stream1, DMA_IT_TCIF1);
+		DMA_ClearFlag(DMA2_Stream1, DMA_IT_TCIF1);
 	}
-	if(DMA_GetITStatus(DMA2_Stream0, DMA_IT_TCIF0))
-	{
-		dma2_status = 1;
+}
+
+void DMA2_Stream2_IRQHandler(void)
+{
+	if(DMA_GetITStatus(DMA2_Stream2, DMA_IT_TCIF2)){
+		int i = 0;
+		for(i = 0; i < ARRAYSIZE; i++){
+			ADC_values[i]++;
+		}
+/*
+		// Change to state 1
+		dma_state = 1;
+
+		// Disable transfer on this DMA controller
+		DMA2_Stream1->CR &= ~DMA_SxCR_EN;
+
+		// Select mem0 for double-buffer, and then enable DMA1
+		DMA1_Stream6->CR &= ~DMA_SxCR_CT;
+		DMA1_Stream6->CR |= DMA_SxCR_EN;*/
+
+		DMA_ClearITPendingBit(DMA2_Stream2, DMA_IT_TCIF2);
+		DMA_ClearFlag(DMA2_Stream2, DMA_IT_TCIF2);
 	}
-	DMA_ClearITPendingBit(DMA2_Stream0, DMA_IT_TCIF0 | DMA_IT_HTIF0);
-	DMA_ClearFlag(DMA2_Stream0, DMA_IT_TCIF0 | DMA_IT_HTIF0);
+}
+
+void DMA1_Stream6_IRQHandler(void)
+{
+	if(DMA_GetITStatus(DMA2_Stream6, DMA_IT_TCIF4)){
+		// Disable DMA1
+		DMA1_Stream6->CR &= ~DMA_SxCR_EN;
+
+		switch(dma_state){
+		case 1:
+			dma_state = 2;
+			break;
+		case 2:
+		default:
+			dma_state = 0;
+		}
+
+		DMA_ClearITPendingBit(DMA2_Stream6, DMA_IT_TCIF4);
+		DMA_ClearFlag(DMA2_Stream6, DMA_IT_TCIF4);
+	}
 }
 
 ///*wait for DMA transfer to be done*/
