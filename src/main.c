@@ -15,7 +15,7 @@
 #include "stm32f4xx_gpio.h" //yes?
 #include "misc.h" //why?
 #include <stdbool.h> //why?
-#include "LEDs.h" //check
+#include "GPIO_init.h" //check
 #include "ADC.h"
 
 #include "FreeRTOSConfig.h"
@@ -59,7 +59,7 @@ void vGeneralTaskInit(void){
 
 int main(void)
 {
-	init_LED();
+	init_GPIOB;
 	//init_pwm_in();
 
 	vGeneralTaskInit();
