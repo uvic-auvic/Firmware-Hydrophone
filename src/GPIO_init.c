@@ -21,18 +21,18 @@ extern void init_TIM4(){
 	TIM_TimeBaseInitTypeDef Timer_struct;
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
 
-	Timer_struct.TIM_Prescaler = 1 - 1;
+	Timer_struct.TIM_Prescaler = 10 - 1;
 	Timer_struct.TIM_CounterMode = TIM_CounterMode_Up;
 
 	/*TIM_Period = timer_tick_frequency / PWM_frequency - 1 */
 
-	Timer_struct.TIM_Period = 8400 - 1; //freq = 10kHz assuming timer_tick = 84MHz
+	Timer_struct.TIM_Period = 840000 - 1; //freq = 10Hz assuming timer_tick = 84MHz
 	Timer_struct.TIM_ClockDivision = TIM_CKD_DIV1;
 	Timer_struct.TIM_RepetitionCounter = 0;
 
 	TIM_TimeBaseInit(TIM4, &Timer_struct);
 }
-extern void TM_LEDS_Init() {
+extern void GPIOB_CTRL_Init() {
     GPIO_InitTypeDef GPIO_InitStruct;
 
     /* Clock for GPIOD */
@@ -62,7 +62,7 @@ extern void init_GPIOC(){
 	GPIO_Init(GPIOC, &GPIO_Ports);
 }
 
-//extern void init_GPIOB(){
+//extern void init_GPIOB_LED(){
 //	GPIO_InitTypeDef GPIO_Outputs;
 //	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
 //

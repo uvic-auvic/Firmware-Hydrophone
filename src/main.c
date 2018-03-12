@@ -23,23 +23,24 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#define TESTING_SAMPLES		(2000)
-uint32_t all_freqs[TESTING_SAMPLES];
 
-uint32_t ch1 = 0;
+uint16_t ch1 = 0;
 uint16_t ch2 = 0;
 uint16_t ch3 = 0;
 uint16_t ch4 = 0;
 
 
 void blinkyTask(void *dummy){
+	//uint8_t count = 1;
 	while(1){
 		GPIOB->ODR ^= GPIO_Pin_12;
+		//if((count % 100) == 0)
 
-		ch1 = GPIOC->IDR;
+		ch1 = GPIOC->IDR & 0x3FFF;
 
 		/* maintain LED C9 status for 200ms */
 		vTaskDelay(200);
+
 	}
 }
 
@@ -76,7 +77,7 @@ int main(void)
 	//set PWM
 	init_PWM();
 	//set Port B CONVST
-	TM_LEDS_Init();
+	GPIOB_CTRL_Init();
 
 	/*Pull CS and WR low to allow write to configuration register*/
 	GPIO_ResetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_2);
