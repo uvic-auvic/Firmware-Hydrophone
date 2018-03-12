@@ -12,10 +12,10 @@
 #include "stm32f4xx.h"
 #include "stm32f4xx_rcc.h" //maybe
 #include "stm32f4xx_tim.h" //maybe
-#include "stm32f4xx_gpio.h" //yes?
+//#include "stm32f4xx_gpio.h"
 #include "misc.h" //why?
 #include <stdbool.h> //why?
-#include "GPIO_init.h" //check
+#include "GPIO_init.h"
 #include "ADC.h"
 
 #include "FreeRTOSConfig.h"
@@ -26,21 +26,30 @@
 #define TESTING_SAMPLES		(2000)
 uint32_t all_freqs[TESTING_SAMPLES];
 
+uint32_t ch1 = 0;
+uint16_t ch2 = 0;
+uint16_t ch3 = 0;
+uint16_t ch4 = 0;
+
+
 void blinkyTask(void *dummy){
 	while(1){
 		GPIOB->ODR ^= GPIO_Pin_12;
+
+		ch1 = GPIOC->IDR;
+
 		/* maintain LED C9 status for 200ms */
-		vTaskDelay(100);
+		vTaskDelay(200);
 	}
 }
 
-void hADC(void *dummy){
-	//ADC_init();
-
-	while(1){
-		vTaskDelay(800);
-	}
-}
+//void hADC(void *dummy){
+//	//ADC_init();
+//
+//	while(1){
+//		vTaskDelay(800);
+//	}
+//}
 
 void vGeneralTaskInit(void){
 	xTaskCreate(blinkyTask,
@@ -49,18 +58,36 @@ void vGeneralTaskInit(void){
 		NULL,                 // pvParameters
 		tskIDLE_PRIORITY + 1, // uxPriority
 		NULL              ); // pvCreatedTask */
-	xTaskCreate(hADC,
-		(const signed char *)"hADC",
-		configMINIMAL_STACK_SIZE,
-		NULL,                 // pvParameters
-		tskIDLE_PRIORITY + 1, // uxPriority
-		NULL              ); // pvCreatedTask */
+//	xTaskCreate(hADC,
+//		(const signed char *)"hADC",
+//		configMINIMAL_STACK_SIZE,
+//		NULL,                 // pvParameters
+//		tskIDLE_PRIORITY + 1, // uxPriority
+//		NULL              ); // pvCreatedTask */
 }
 
 int main(void)
 {
-	init_GPIOB;
-	//init_pwm_in();
+	//init_GPIOB();
+	init_GPIOC();
+
+	//set timer
+	init_TIM4();
+	//set PWM
+	init_PWM();
+	//set Port B CONVST
+	TM_LEDS_Init();
+
+	/*Pull CS and WR low to allow write to configuration register*/
+	GPIO_ResetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_2);
+
+	/*write to configuration register*/
+	GPIO_SetBits(GPIOC, GPIO_Pin_All & 0x00FF);
+
+	/*Reconfigure 14 Port C pins as input*/
+	GPIOC->MODER = (GPIOC->MODER & ~(0x0FFFFFFF));
+
+
 
 	vGeneralTaskInit();
 	vTaskStartScheduler();
