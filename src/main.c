@@ -12,35 +12,54 @@
 #include "stm32f4xx.h"
 #include "stm32f4xx_rcc.h" //maybe
 #include "stm32f4xx_tim.h" //maybe
-#include "stm32f4xx_gpio.h" //yes?
+#include "stm32f4xx_gpio.h"
 #include "misc.h" //why?
 #include <stdbool.h> //why?
-#include "GPIO_init.h" //check
+#include "GPIO_init.h"
 #include "ADC.h"
+#include "PWM_OUT.h"
 
 #include "FreeRTOSConfig.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
 
-#define TESTING_SAMPLES		(2000)
-uint32_t all_freqs[TESTING_SAMPLES];
+
+uint16_t ch1 = 0;
+uint16_t ch2 = 0;
+uint16_t ch3 = 0;
+uint16_t ch4 = 0;
+
+int count = 0;
 
 void blinkyTask(void *dummy){
+	//uint8_t count = 1;
 	while(1){
-		GPIOB->ODR ^= GPIO_Pin_12;
+		//GPIOD->ODR ^= GPIO_Pin_12;
+		if(count%2 == 0 ){
+			GPIO_SetBits(GPIOD, GPIO_Pin_13 | GPIO_Pin_15);
+			count = 1;
+		}
+		else {
+			GPIO_ResetBits(GPIOD, GPIO_Pin_13 | GPIO_Pin_15);
+			count = 0;
+		}
+		//if((count % 100) == 0)
+
+		//ch1 = GPIOC->IDR & 0x3FFF; input
+
 		/* maintain LED C9 status for 200ms */
-		vTaskDelay(100);
+		vTaskDelay(900);
 	}
 }
 
-void hADC(void *dummy){
-	//ADC_init();
-
-	while(1){
-		vTaskDelay(800);
-	}
-}
+//void hADC(void *dummy){
+//	//ADC_init();
+//
+//	while(1){
+//		vTaskDelay(800);
+//	}
+//}
 
 void vGeneralTaskInit(void){
 	xTaskCreate(blinkyTask,
@@ -49,18 +68,36 @@ void vGeneralTaskInit(void){
 		NULL,                 // pvParameters
 		tskIDLE_PRIORITY + 1, // uxPriority
 		NULL              ); // pvCreatedTask */
-	xTaskCreate(hADC,
-		(const signed char *)"hADC",
-		configMINIMAL_STACK_SIZE,
-		NULL,                 // pvParameters
-		tskIDLE_PRIORITY + 1, // uxPriority
-		NULL              ); // pvCreatedTask */
+//	xTaskCreate(hADC,
+//		(const signed char *)"hADC",
+//		configMINIMAL_STACK_SIZE,
+//		NULL,                 // pvParameters
+//		tskIDLE_PRIORITY + 1, // uxPriority
+//		NULL              ); // pvCreatedTask */
 }
 
 int main(void)
 {
-	init_GPIOB;
-	//init_pwm_in();
+	//init_GPIOC(); used for input
+
+	init_GPIOB();
+	init_TIM3();
+	init_PWM();
+
+	init_GPIOD_LED();
+	GPIO_SetBits(GPIOD, GPIO_Pin_12 | GPIO_Pin_14);
+
+
+//	/*Pull CS and WR low to allow write to configuration register*/
+//	GPIO_ResetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_2);
+//
+//	/*write to configuration register*/
+//	GPIO_SetBits(GPIOC, GPIO_Pin_All & 0x00FF);
+//
+//	/*Reconfigure 14 Port C pins as input*/
+//	GPIOC->MODER = (GPIOC->MODER & ~(0x0FFFFFFF));
+
+
 
 	vGeneralTaskInit();
 	vTaskStartScheduler();
