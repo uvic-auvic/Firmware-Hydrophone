@@ -12,11 +12,12 @@
 #include "stm32f4xx.h"
 #include "stm32f4xx_rcc.h" //maybe
 #include "stm32f4xx_tim.h" //maybe
-//#include "stm32f4xx_gpio.h"
+#include "stm32f4xx_gpio.h"
 #include "misc.h" //why?
 #include <stdbool.h> //why?
 #include "GPIO_init.h"
 #include "ADC.h"
+#include "PWM_OUT.h"
 
 #include "FreeRTOSConfig.h"
 
@@ -29,18 +30,26 @@ uint16_t ch2 = 0;
 uint16_t ch3 = 0;
 uint16_t ch4 = 0;
 
+int count = 0;
 
 void blinkyTask(void *dummy){
 	//uint8_t count = 1;
 	while(1){
-		GPIOB->ODR ^= GPIO_Pin_12;
+		//GPIOD->ODR ^= GPIO_Pin_12;
+		if(count%2 == 0 ){
+			GPIO_SetBits(GPIOD, GPIO_Pin_13 | GPIO_Pin_15);
+			count = 1;
+		}
+		else {
+			GPIO_ResetBits(GPIOD, GPIO_Pin_13 | GPIO_Pin_15);
+			count = 0;
+		}
 		//if((count % 100) == 0)
 
-		ch1 = GPIOC->IDR & 0x3FFF;
+		//ch1 = GPIOC->IDR & 0x3FFF; input
 
 		/* maintain LED C9 status for 200ms */
-		vTaskDelay(200);
-
+		vTaskDelay(900);
 	}
 }
 
@@ -69,24 +78,24 @@ void vGeneralTaskInit(void){
 
 int main(void)
 {
-	//init_GPIOB();
-	init_GPIOC();
+	//init_GPIOC(); used for input
 
-	//set timer
-	init_TIM4();
-	//set PWM
+	init_GPIOB();
+	init_TIM3();
 	init_PWM();
-	//set Port B CONVST
-	GPIOB_CTRL_Init();
 
-	/*Pull CS and WR low to allow write to configuration register*/
-	GPIO_ResetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_2);
+	init_GPIOD_LED();
+	GPIO_SetBits(GPIOD, GPIO_Pin_12 | GPIO_Pin_14);
 
-	/*write to configuration register*/
-	GPIO_SetBits(GPIOC, GPIO_Pin_All & 0x00FF);
 
-	/*Reconfigure 14 Port C pins as input*/
-	GPIOC->MODER = (GPIOC->MODER & ~(0x0FFFFFFF));
+//	/*Pull CS and WR low to allow write to configuration register*/
+//	GPIO_ResetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_2);
+//
+//	/*write to configuration register*/
+//	GPIO_SetBits(GPIOC, GPIO_Pin_All & 0x00FF);
+//
+//	/*Reconfigure 14 Port C pins as input*/
+//	GPIOC->MODER = (GPIOC->MODER & ~(0x0FFFFFFF));
 
 
 
