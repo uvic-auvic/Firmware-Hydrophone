@@ -13,10 +13,10 @@ extern void init_PWM(){
 	OC_struct.TIM_OutputState = TIM_OutputState_Enable;
 	OC_struct.TIM_OCPolarity = TIM_OCPolarity_Low;
 
-	/*pulse_length = ((TIM_Period + 1) * DutyCycle) / 100 - 1
-	25% duty cycle: pulse_length = ((8399 + 1) * 25) / 100 - 1 = 2099 */
+	/*pulse_length = ((TIM_Period + 1) * DutyCycle) / 100
+	90% duty cycle: pulse_length = ((8400) * 25) / 100 = 7560 */
 
-	OC_struct.TIM_Pulse = 2100 - 1; /* 25% duty cycle */
+	OC_struct.TIM_Pulse = 7560 - 1; /* 90% duty cycle */
 	TIM_OC1Init(TIM3, &OC_struct);
 	TIM_OC1PreloadConfig(TIM3, TIM_OCPreload_Enable);
 

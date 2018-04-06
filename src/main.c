@@ -9,15 +9,16 @@
 */
 
 
+#include <GPIO_Data.h>
 #include "stm32f4xx.h"
 #include "stm32f4xx_rcc.h" //maybe
 #include "stm32f4xx_tim.h" //maybe
 #include "stm32f4xx_gpio.h"
 #include "misc.h" //why?
-#include <stdbool.h> //why?
-#include "GPIO_init.h"
+#include <stdbool.h>
 #include "ADC.h"
 #include "PWM_OUT.h"
+#include "READ_STATUS.h"
 
 #include "FreeRTOSConfig.h"
 
@@ -25,11 +26,12 @@
 #include "task.h"
 
 
-uint16_t ch1 = 0;
-uint16_t ch2 = 0;
-uint16_t ch3 = 0;
-uint16_t ch4 = 0;
+uint16_t ch1_data = 0;
+uint16_t ch2_data = 0;
+uint16_t ch3_data = 0;
+uint16_t ch4_data = 0;
 
+int channel_read = 0;
 int count = 0;
 
 void blinkyTask(void *dummy){
@@ -78,11 +80,12 @@ void vGeneralTaskInit(void){
 
 int main(void)
 {
-	//init_GPIOC(); used for input
+	init_GPIOC();
 
 	init_GPIOB();
 	init_TIM3();
 	init_PWM();
+	init_conv_ready();
 
 	init_GPIOD_LED();
 	GPIO_SetBits(GPIOD, GPIO_Pin_12 | GPIO_Pin_14);
@@ -146,16 +149,37 @@ void vApplicationStackOverflowHook(xTaskHandle pxTask, signed char *pcTaskName) 
   for(;;);
 }
 
-void TIM5_IRQHandler(){
-	if (TIM_GetITStatus(TIM5, TIM_IT_Update) != RESET){
-		TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
-		//GPIOD->ODR ^= GPIO_Pin_15;
-	}else if (TIM_GetITStatus(TIM5, TIM_IT_CC1) != RESET){
-		TIM_ClearITPendingBit(TIM5, TIM_IT_CC1);
-		GPIOD->ODR ^= GPIO_Pin_14;
-	}
-}
+void EXTI0_IRQHandler(void) {
 
-void DMA1_Stream2_IRQHandler(){
+    if (EXTI_GetITStatus(EXTI_Line0) != RESET) {
+    	if (channel_read == 0){
+    		GPIO_ResetBits(GPIOB, GPIO_Pin_1); //pull RD down
+    		//Read Data ch0_data
+    		GPIO_SetBits(GPIOB, GPIO_Pin_1);//Set RD
+    		channel_read++;
+    	}
+    	else if (channel_read == 1){
+    		GPIO_ResetBits(GPIOB, GPIO_Pin_1); //pull RD down
+    		//Read Data ch1_data
+    		GPIO_SetBits(GPIOB, GPIO_Pin_1);//Set RD
+    		channel_read++;
+    	}
+    	else if (channel_read == 2){
+    		GPIO_ResetBits(GPIOB, GPIO_Pin_1); //pull RD down
+    		//Read Data ch2_data
+    		GPIO_SetBits(GPIOB, GPIO_Pin_1);//Set RD
+    		channel_read++;
+    	}
+    	else if (channel_read == 3){
+    	    GPIO_ResetBits(GPIOB, GPIO_Pin_1); //pull RD down
+    	    //Read Data ch3_data
+    	    GPIO_SetBits(GPIOB, GPIO_Pin_1);//Set RD
+    	    channel_read++;
+    	}
 
+    	//GPIO_SetBits(GPIOD, GPIO_Pin_14); /*Set LED on Discovery Board*/
+
+    	/* Clear interrupt flag */
+        EXTI_ClearITPendingBit(EXTI_Line0);
+    }
 }
