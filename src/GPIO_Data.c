@@ -7,7 +7,7 @@ extern void init_GPIOC(){
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
 	GPIO_StructInit(&GPIO_Ports);
 	GPIO_Ports.GPIO_Pin = GPIO_Pin_All & 0x3FFF;
-	GPIO_Ports.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_Ports.GPIO_Mode = GPIO_Mode_OUT; //output mode initially, reconfigured as input in main
 	GPIO_Ports.GPIO_OType = GPIO_OType_PP;
 	GPIO_Ports.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Ports.GPIO_PuPd = GPIO_PuPd_NOPULL;

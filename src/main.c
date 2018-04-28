@@ -26,10 +26,10 @@
 #include "task.h"
 
 
+uint16_t ch0_data = 0;
 uint16_t ch1_data = 0;
 uint16_t ch2_data = 0;
 uint16_t ch3_data = 0;
-uint16_t ch4_data = 0;
 
 int channel_read = 0;
 int count = 0;
@@ -39,11 +39,11 @@ void blinkyTask(void *dummy){
 	while(1){
 		//GPIOD->ODR ^= GPIO_Pin_12;
 		if(count%2 == 0 ){
-			GPIO_SetBits(GPIOD, GPIO_Pin_13 | GPIO_Pin_15);
+			GPIO_SetBits(GPIOB, GPIO_Pin_12); //| GPIO_Pin_15);
 			count = 1;
 		}
 		else {
-			GPIO_ResetBits(GPIOD, GPIO_Pin_13 | GPIO_Pin_15);
+			GPIO_ResetBits(GPIOB, GPIO_Pin_12); //| GPIO_Pin_15);
 			count = 0;
 		}
 		//if((count % 100) == 0)
@@ -88,17 +88,22 @@ int main(void)
 	init_conv_ready();
 
 	init_GPIOD_LED();
-	GPIO_SetBits(GPIOD, GPIO_Pin_12 | GPIO_Pin_14);
+	//GPIO_SetBits(GPIOD, GPIO_Pin_12 | GPIO_Pin_14);
 
 
-//	/*Pull CS and WR low to allow write to configuration register*/
-//	GPIO_ResetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_2);
-//
-//	/*write to configuration register*/
-//	GPIO_SetBits(GPIOC, GPIO_Pin_All & 0x00FF);
-//
-//	/*Reconfigure 14 Port C pins as input*/
-//	GPIOC->MODER = (GPIOC->MODER & ~(0x0FFFFFFF));
+	/*Pull CS and WR low to allow write to configuration register*/
+	GPIO_ResetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_2);
+
+	/*write to configuration register*/
+	GPIO_SetBits(GPIOC, GPIO_Pin_All & 0x00FF);
+
+	for(int x = 0; x <= 10; x++ ){}	//delay
+
+	/*Pull CS and WR high to disable write to configuration register*/
+	GPIO_SetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_2);
+
+	/*Reconfigure 14 Port C pins as input*/
+	GPIOC->MODER = (GPIOC->MODER & ~(0x0FFFFFFF));
 
 
 
@@ -151,30 +156,42 @@ void vApplicationStackOverflowHook(xTaskHandle pxTask, signed char *pcTaskName) 
 
 void EXTI0_IRQHandler(void) {
 
-    if (EXTI_GetITStatus(EXTI_Line0) != RESET) {
+    if (EXTI_GetITStatus(EXTI_Line8) != RESET) { //!= 0??
+
+    		GPIO_InitTypeDef GPIO_InitStruct;
+
+    		RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+    	    GPIO_InitStruct.GPIO_Pin = GPIO_Pin_9;
+    		GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
+    		GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL;
+    		GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;
+    		GPIO_InitStruct.GPIO_Speed = GPIO_Speed_100MHz;
+    		GPIO_Init(GPIOA, &GPIO_InitStruct);
+    		GPIO_SetBits(GPIOB, GPIO_Pin_9);
+
     	if (channel_read == 0){
-    		GPIO_ResetBits(GPIOB, GPIO_Pin_1); //pull RD down
-    		//Read Data ch0_data
-    		GPIO_SetBits(GPIOB, GPIO_Pin_1);//Set RD
+    		GPIO_ResetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_1); //pull RD down
+    		ch0_data = (GPIOC->IDR & 0x3FFF);  				//read data
+    		GPIO_SetBits(GPIOB, GPIO_Pin_1);   				//Set RD
     		channel_read++;
     	}
     	else if (channel_read == 1){
-    		GPIO_ResetBits(GPIOB, GPIO_Pin_1); //pull RD down
-    		//Read Data ch1_data
-    		GPIO_SetBits(GPIOB, GPIO_Pin_1);//Set RD
+    		GPIO_ResetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_1); //pull RD down
+    		ch1_data = (GPIOC->IDR & 0x3FFF);  //read data
+    		GPIO_SetBits(GPIOB, GPIO_Pin_1);   //Set RD
     		channel_read++;
     	}
     	else if (channel_read == 2){
-    		GPIO_ResetBits(GPIOB, GPIO_Pin_1); //pull RD down
-    		//Read Data ch2_data
-    		GPIO_SetBits(GPIOB, GPIO_Pin_1);//Set RD
-    		channel_read++;
+    		GPIO_ResetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_1); //pull RD down
+    	    ch2_data = (GPIOC->IDR & 0x3FFF);  //read data
+    	    GPIO_SetBits(GPIOB, GPIO_Pin_1);   //Set RD
+    	    channel_read++;
     	}
     	else if (channel_read == 3){
-    	    GPIO_ResetBits(GPIOB, GPIO_Pin_1); //pull RD down
-    	    //Read Data ch3_data
-    	    GPIO_SetBits(GPIOB, GPIO_Pin_1);//Set RD
-    	    channel_read++;
+    		GPIO_ResetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_1); //pull RD down
+    		ch3_data = (GPIOC->IDR & 0x3FFF);  //read data
+    		GPIO_SetBits(GPIOB, GPIO_Pin_1);   //Set RD
+    		channel_read = 0;
     	}
 
     	//GPIO_SetBits(GPIOD, GPIO_Pin_14); /*Set LED on Discovery Board*/
