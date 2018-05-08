@@ -97,7 +97,7 @@ int main(void)
 	/*write to configuration register*/
 	GPIO_SetBits(GPIOC, GPIO_Pin_All & 0x00FF);
 
-	for(int x = 0; x <= 10; x++ ){}	//delay
+	for(int x = 0; x <= 10000; x++ ){}	//delay not used when debugging
 
 	/*Pull CS and WR high to disable write to configuration register*/
 	GPIO_SetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_2);
