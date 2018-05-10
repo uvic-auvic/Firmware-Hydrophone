@@ -37,21 +37,9 @@ int count = 0;
 void blinkyTask(void *dummy){
 	//uint8_t count = 1;
 	while(1){
-		//GPIOD->ODR ^= GPIO_Pin_12;
-		if(count%2 == 0 ){
-			GPIO_SetBits(GPIOB, GPIO_Pin_12); //| GPIO_Pin_15);
-			count = 1;
-		}
-		else {
-			GPIO_ResetBits(GPIOB, GPIO_Pin_12); //| GPIO_Pin_15);
-			count = 0;
-		}
-		//if((count % 100) == 0)
 
-		//ch1 = GPIOC->IDR & 0x3FFF; input
-
-		/* maintain LED C9 status for 200ms */
-		vTaskDelay(900);
+		GPIOB->ODR ^= GPIO_Pin_12;
+		vTaskDelay(500);
 	}
 }
 
