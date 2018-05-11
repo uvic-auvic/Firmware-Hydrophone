@@ -37,17 +37,11 @@ int count = 0;
 void blinkyTask(void *dummy){
 
 	while(1){
-//		//GPIOD->ODR ^= GPIO_Pin_12;
-//		if(count%2 == 0 ){
-//			GPIO_SetBits(GPIOB, GPIO_Pin_12);
-//			count = 1;
-//		}
-//		else {
-//			GPIO_ResetBits(GPIOB, GPIO_Pin_12);
-//			count = 0;
-//		}
-//
-		vTaskDelay(900);
+
+
+		GPIOB->ODR ^= GPIO_Pin_12;
+		vTaskDelay(500);
+
 	}
 }
 
