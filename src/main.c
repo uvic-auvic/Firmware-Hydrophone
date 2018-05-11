@@ -11,10 +11,10 @@
 
 #include <GPIO_Data.h>
 #include "stm32f4xx.h"
-#include "stm32f4xx_rcc.h" //maybe
-#include "stm32f4xx_tim.h" //maybe
+#include "stm32f4xx_rcc.h"
+#include "stm32f4xx_tim.h"
 #include "stm32f4xx_gpio.h"
-#include "misc.h" //why?
+#include "misc.h"
 #include <stdbool.h>
 #include "ADC.h"
 #include "PWM_OUT.h"
@@ -35,33 +35,21 @@ int channel_read = 0;
 int count = 0;
 
 void blinkyTask(void *dummy){
-	//uint8_t count = 1;
+
 	while(1){
-		//GPIOD->ODR ^= GPIO_Pin_12;
-		if(count%2 == 0 ){
-			GPIO_SetBits(GPIOB, GPIO_Pin_12); //| GPIO_Pin_15);
-			count = 1;
-		}
-		else {
-			GPIO_ResetBits(GPIOB, GPIO_Pin_12); //| GPIO_Pin_15);
-			count = 0;
-		}
-		//if((count % 100) == 0)
-
-		//ch1 = GPIOC->IDR & 0x3FFF; input
-
-		/* maintain LED C9 status for 200ms */
+//		//GPIOD->ODR ^= GPIO_Pin_12;
+//		if(count%2 == 0 ){
+//			GPIO_SetBits(GPIOB, GPIO_Pin_12);
+//			count = 1;
+//		}
+//		else {
+//			GPIO_ResetBits(GPIOB, GPIO_Pin_12);
+//			count = 0;
+//		}
+//
 		vTaskDelay(900);
 	}
 }
-
-//void hADC(void *dummy){
-//	//ADC_init();
-//
-//	while(1){
-//		vTaskDelay(800);
-//	}
-//}
 
 void vGeneralTaskInit(void){
 	xTaskCreate(blinkyTask,
@@ -70,44 +58,52 @@ void vGeneralTaskInit(void){
 		NULL,                 // pvParameters
 		tskIDLE_PRIORITY + 1, // uxPriority
 		NULL              ); // pvCreatedTask */
-//	xTaskCreate(hADC,
-//		(const signed char *)"hADC",
-//		configMINIMAL_STACK_SIZE,
-//		NULL,                 // pvParameters
-//		tskIDLE_PRIORITY + 1, // uxPriority
-//		NULL              ); // pvCreatedTask */
+
+}
+
+void temp_led_testing(void){
+	//temp testing code for discovery
+	GPIO_InitTypeDef GPIO_Outputs;
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+	//Pin 15 is blue LED
+	GPIO_Outputs.GPIO_Pin = GPIO_Pin_15 | GPIO_Pin_12 | GPIO_Pin_14;
+	GPIO_Outputs.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_Outputs.GPIO_OType = GPIO_OType_PP;
+	GPIO_Outputs.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Outputs.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOD, &GPIO_Outputs);
+
+	GPIO_SetBits(GPIOD, GPIO_Pin_15); //test by led
 }
 
 int main(void)
 {
-	init_GPIOC();
+	temp_led_testing();
 
-	init_GPIOB();
-	init_TIM3();
+	init_GPIOC(); //turn on all data pins
+	init_GPIOB(); //GPIO for CONVST pwm
+	init_TIM3(); //Timer for CONVST pwm
 	init_PWM();
-	init_conv_ready();
 
-	init_GPIOD_LED();
-	//GPIO_SetBits(GPIOD, GPIO_Pin_12 | GPIO_Pin_14);
-
+	init_GPIOB_LED(); //GPIO for LED pins & CS & WR signals
 
 	/*Pull CS and WR low to allow write to configuration register*/
 	GPIO_ResetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_2);
-
 	/*write to configuration register*/
 	GPIO_SetBits(GPIOC, GPIO_Pin_All & 0x00FF);
 
-	for(int x = 0; x <= 10000; x++ ){}	//delay not used when debugging
+	//for(int x = 0; x <= 10000; x++ ){}	//delay not used when debugging
+	for(int x = 0; x <= 3; x++ ){}	//temp
 
 	/*Pull CS and WR high to disable write to configuration register*/
 	GPIO_SetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_2);
-
 	/*Reconfigure 14 Port C pins as input*/
 	GPIOC->MODER = (GPIOC->MODER & ~(0x0FFFFFFF));
 
-
-
 	vGeneralTaskInit();
+
+	init_conv_ready(); //Interrupt setup at last possible moment
+
 	vTaskStartScheduler();
 
 	//Should never get here
@@ -154,20 +150,11 @@ void vApplicationStackOverflowHook(xTaskHandle pxTask, signed char *pcTaskName) 
   for(;;);
 }
 
-void EXTI0_IRQHandler(void) {
+void EXTI9_5_IRQHandler(void) {
 
-    if (EXTI_GetITStatus(EXTI_Line8) != RESET) { //!= 0??
+    if (EXTI_GetITStatus(EXTI_Line9) != RESET) {
 
-    		GPIO_InitTypeDef GPIO_InitStruct;
-
-    		RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
-    	    GPIO_InitStruct.GPIO_Pin = GPIO_Pin_9;
-    		GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
-    		GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL;
-    		GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;
-    		GPIO_InitStruct.GPIO_Speed = GPIO_Speed_100MHz;
-    		GPIO_Init(GPIOA, &GPIO_InitStruct);
-    		GPIO_SetBits(GPIOB, GPIO_Pin_9);
+    	GPIO_ToggleBits(GPIOB, GPIO_Pin_12);
 
     	if (channel_read == 0){
     		GPIO_ResetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_1); //pull RD down
@@ -176,7 +163,7 @@ void EXTI0_IRQHandler(void) {
     		channel_read++;
     	}
     	else if (channel_read == 1){
-    		GPIO_ResetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_1); //pull RD down
+    		GPIO_ResetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_1); //pull CS & RD down
     		ch1_data = (GPIOC->IDR & 0x3FFF);  //read data
     		GPIO_SetBits(GPIOB, GPIO_Pin_1);   //Set RD
     		channel_read++;
@@ -193,6 +180,7 @@ void EXTI0_IRQHandler(void) {
     		GPIO_SetBits(GPIOB, GPIO_Pin_1);   //Set RD
     		channel_read = 0;
     	}
+    	GPIO_SetBits(GPIOB, GPIO_Pin_0); //now also setting CS
 
     	//GPIO_SetBits(GPIOD, GPIO_Pin_14); /*Set LED on Discovery Board*/
 

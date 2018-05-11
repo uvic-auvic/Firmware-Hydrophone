@@ -11,7 +11,7 @@
 extern void init_PWM();
 extern void init_TIM3();
 extern void init_GPIOB();
-extern void init_GPIOD_LED();
+extern void init_GPIOB_LED();
 
 
 #endif /* PWM_OUT_H_ */

@@ -57,11 +57,11 @@ extern void init_GPIOB() {
     GPIO_Init(GPIOB, &GPIO_InitStruct);
 }
 
-extern void init_GPIOD_LED(){  //switches between PortD and PortB depending on board tested
+extern void init_GPIOB_LED(){
 	GPIO_InitTypeDef GPIO_Outputs;
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
 	//Pin 12 is LED, Pin0 & and Pin 2 are CS & WR
-	GPIO_Outputs.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_2 | GPIO_Pin_12; //| GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15;
+	GPIO_Outputs.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_2 | GPIO_Pin_12;
 	GPIO_Outputs.GPIO_Mode = GPIO_Mode_OUT;
 	GPIO_Outputs.GPIO_OType = GPIO_OType_PP;
 	GPIO_Outputs.GPIO_Speed = GPIO_Speed_50MHz;
