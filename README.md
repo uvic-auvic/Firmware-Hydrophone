@@ -1,8 +1,11 @@
 # Hydrophones Microcontroller
 
 Some important information for operation of hydrophones:
+
 CONVST pwm signal output is resonsible for for setting the frequency at which the ADC performs conversions.
+
 EOC signal is responsible for noting the availability of a single conversion results available on the 14 bit data bus
+
 EOLC signal is an additional converion ready signal that activates simultaneously with fourth (and last) conversion result being ready on the data bus.
 
 Additional notes on powering up hydrophones:
