@@ -1,8 +1,14 @@
 # Hydrophones Microcontroller
 
-Control settings of ADs Chip
-Collecting data bytes with GPIO from ADC chip and send to UART output buffer.
+Some important information for operation of hydrophones:
+CONVST pwm signal output is resonsible for for setting the frequency at which the ADC performs conversions.
+EOC signal is responsible for noting the availability of a single conversion results available on the 14 bit data bus
+EOLC signal is an additional converion ready signal that activates simultaneously with fourth (and last) conversion result being ready on the data bus.
 
+Additional notes on powering up hydrophones:
+To activate ADC chip, configuration registers in the ADC are written to during startup via the 14 bit data bus. After startup, the pins change from data inputs to sending out data from the ADC.
+
+Various micro pin mappings:
 Data Pins:
 Pins D0 - D13 on ADC map to PC0 - PC13 on Micro
 
