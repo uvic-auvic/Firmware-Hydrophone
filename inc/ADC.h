@@ -1,13 +1,13 @@
 /*
  * ADC.h
  *
- *  Created on: Jul 17, 2017
+ *  Created on: Jun 1, 2018
  *      Author: Lyden
  */
 
 #ifndef ADC_H_
 #define ADC_H_
 
-extern void ADC_init();
+extern void init_ADC();
 
 #endif /* ADC_H_ */

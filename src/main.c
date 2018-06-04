@@ -9,32 +9,20 @@
 */
 
 
-#include <GPIO_Data.h>
 #include "stm32f4xx.h"
-#include "stm32f4xx_rcc.h"
-#include "stm32f4xx_tim.h"
-#include "stm32f4xx_gpio.h"
 #include "misc.h"
-#include <stdbool.h>
 #include "ADC.h"
-#include "PWM_OUT.h"
-#include "READ_STATUS.h"
+#include "delay.h"
 
 #include "FreeRTOSConfig.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
 
-
-uint16_t ch0_data = 0;
-uint16_t ch1_data = 0;
-uint16_t ch2_data = 0;
-uint16_t ch3_data = 0;
-
-int channel_read = 0;
-int count = 0;
-
 void blinkyTask(void *dummy){
+	/* Configure blinky LED for output mode */
+	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN; /* Enable clock for B pins */
+	GPIOB->MODER |= GPIO_MODER_MODER12_0; /* Output mode */
 
 	while(1){
 
@@ -53,48 +41,12 @@ void vGeneralTaskInit(void){
 
 }
 
-void temp_led_testing(void){
-	//temp testing code for discovery
-	GPIO_InitTypeDef GPIO_Outputs;
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
-	//Pin 15 is blue LED
-	GPIO_Outputs.GPIO_Pin = GPIO_Pin_15 | GPIO_Pin_12 | GPIO_Pin_14;
-	GPIO_Outputs.GPIO_Mode = GPIO_Mode_OUT;
-	GPIO_Outputs.GPIO_OType = GPIO_OType_PP;
-	GPIO_Outputs.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Outputs.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_Init(GPIOD, &GPIO_Outputs);
-
-	GPIO_SetBits(GPIOD, GPIO_Pin_15); //test by led
-}
-
 int main(void)
 {
-	temp_led_testing();
-
-	init_GPIOC(); //turn on all data pins
-	init_GPIOB(); //GPIO for CONVST pwm
-	init_TIM3(); //Timer for CONVST pwm
-	init_PWM();
-
-	init_GPIOB_LED(); //GPIO for LED pins & CS & WR signals
-
-	/*Pull CS and WR low to allow write to configuration register*/
-	GPIO_ResetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_2);
-	/*write to configuration register*/
-	GPIO_SetBits(GPIOC, GPIO_Pin_All & 0x00FF);
-
-	//for(int x = 0; x <= 10000; x++ ){}	//delay not used when debugging
-	for(int x = 0; x <= 3; x++ ){}	//temp
-
-	/*Pull CS and WR high to disable write to configuration register*/
-	GPIO_SetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_2);
-	/*Reconfigure 14 Port C pins as input*/
-	GPIOC->MODER = (GPIOC->MODER & ~(0x0FFFFFFF));
+	init_delay();
+	init_ADC();
 
 	vGeneralTaskInit();
-
-	init_conv_ready(); //Interrupt setup at last possible moment
 
 	vTaskStartScheduler();
 
@@ -140,43 +92,4 @@ void vApplicationStackOverflowHook(xTaskHandle pxTask, signed char *pcTaskName) 
      function is called if a stack overflow is detected. */
   taskDISABLE_INTERRUPTS();
   for(;;);
-}
-
-void EXTI9_5_IRQHandler(void) {
-
-    if (EXTI_GetITStatus(EXTI_Line9) != RESET) {
-
-    	GPIO_ToggleBits(GPIOB, GPIO_Pin_12);
-
-    	if (channel_read == 0){
-    		GPIO_ResetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_1); //pull RD down
-    		ch0_data = (GPIOC->IDR & 0x3FFF);  				//read data
-    		GPIO_SetBits(GPIOB, GPIO_Pin_1);   				//Set RD
-    		channel_read++;
-    	}
-    	else if (channel_read == 1){
-    		GPIO_ResetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_1); //pull CS & RD down
-    		ch1_data = (GPIOC->IDR & 0x3FFF);  //read data
-    		GPIO_SetBits(GPIOB, GPIO_Pin_1);   //Set RD
-    		channel_read++;
-    	}
-    	else if (channel_read == 2){
-    		GPIO_ResetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_1); //pull RD down
-    	    ch2_data = (GPIOC->IDR & 0x3FFF);  //read data
-    	    GPIO_SetBits(GPIOB, GPIO_Pin_1);   //Set RD
-    	    channel_read++;
-    	}
-    	else if (channel_read == 3){
-    		GPIO_ResetBits(GPIOB, GPIO_Pin_0 | GPIO_Pin_1); //pull RD down
-    		ch3_data = (GPIOC->IDR & 0x3FFF);  //read data
-    		GPIO_SetBits(GPIOB, GPIO_Pin_1);   //Set RD
-    		channel_read = 0;
-    	}
-    	GPIO_SetBits(GPIOB, GPIO_Pin_0); //now also setting CS
-
-    	//GPIO_SetBits(GPIOD, GPIO_Pin_14); /*Set LED on Discovery Board*/
-
-    	/* Clear interrupt flag */
-        EXTI_ClearITPendingBit(EXTI_Line0);
-    }
 }
