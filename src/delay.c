@@ -54,7 +54,7 @@ extern void init_delay() {
 	configure_delay_timer();
 }
 
-extern void delay_10ns(uint16_t delay) {
+extern void delay_ticks(uint16_t delay) {
 	delay_prescaler(delay, 0);
 }
 
