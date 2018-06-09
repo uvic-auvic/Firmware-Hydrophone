@@ -106,7 +106,7 @@ static void Configure_DMA_USART2() {
 
 }
 
-extern int8_t UART_push_out_DMA_len(char* mesg, uint16_t len) {
+extern int8_t UART_push_out_len(char* mesg, uint16_t len) {
 
 	if((DMA1_Stream6->CR & 0x1) == 0) {
 
@@ -165,6 +165,5 @@ void USART2_IRQHandler() {
 void DMA1_Stream6_IRQHandler() {
 
 	DMA1->HIFCR |= DMA_HIFCR_CTCIF6; //Clear TC interrupt flag
-
 
 }
