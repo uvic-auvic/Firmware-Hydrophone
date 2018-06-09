@@ -31,7 +31,7 @@ void Command_Handler() {
 
 }
 
-void UART_Command_Handler_init() {
+extern void UART_Command_Handler_init() {
 
 	TaskHandle_t xHandle = NULL;
 
