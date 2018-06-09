@@ -58,7 +58,7 @@ static void Configure_USART2(void) {
 	//RCC->CFGR3 |= RCC_CFGR3_USART1SW_1;
 	USART_InitTypeDef USART_InitStruct; // this is for the USART1 initialization
 
-	USART_InitStruct.USART_BaudRate = 9600;	// the baudrate is set to the value we passed into this init function
+	USART_InitStruct.USART_BaudRate = 115200;	// the baudrate is set to the value we passed into this init function
 	USART_InitStruct.USART_WordLength = USART_WordLength_8b;// we want the data frame size to be 8 bits (standard)
 	USART_InitStruct.USART_StopBits = USART_StopBits_1;	// we want 1 stop bit (standard)
 	USART_InitStruct.USART_Parity = USART_Parity_No;// we don't want a parity bit (standard)
@@ -106,17 +106,19 @@ static void Configure_DMA_USART2() {
 
 }
 
-extern int8_t UART_push_out_DMA_len(char* mesg, uint16_t len) {
+extern int8_t UART_push_out_len(char* mesg, uint16_t len) {
+	/* Wait for DMA to be ready */
+	while(DMA1_Stream6->CR & DMA_SxCR_EN);
 
-	if((DMA1_Stream6->CR & 0x1) == 0) {
+	/* Send out data */
+	DMA1_Stream6->NDTR = len;
+	DMA1_Stream6->M0AR = (uint32_t)mesg;
+	DMA1_Stream6->CR |= 0x1;
 
-		DMA1_Stream6->NDTR = len;
-		DMA1_Stream6->M0AR = (uint32_t)mesg;
-		DMA1_Stream6->CR |= 0x1;
-	}
-
+	return len;
 }
 
+/* Called by command handler */
 extern void UART_init(TaskHandle_t currentHandle) {
 
 	//initialize the input buffer

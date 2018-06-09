@@ -10,6 +10,7 @@
 #include "task.h"
 #include "UART_Controller.h"
 #include "Buffer.h"
+#include "ADC.h"
 
 void Command_Handler() {
 
@@ -26,6 +27,19 @@ void Command_Handler() {
 		}
 
 		Buffer_pop(&inputBuffer, commandString);
+
+		if(strncmp(commandString, "SEND", 4) == 0)
+		{
+			transmit_ADC_readings();
+		}
+
+		else if(strncmp(commandString, "SZ?", 3) == 0)
+		{
+			uint16_t size = get_ADC_buffer_size();
+			char* end_string = "\r\n";
+			UART_push_out_len((char*)&size, 2);
+			UART_push_out_len(end_string, 2);
+		}
 
 	}
 

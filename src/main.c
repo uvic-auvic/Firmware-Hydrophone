@@ -13,6 +13,7 @@
 #include "misc.h"
 #include "ADC.h"
 #include "delay.h"
+#include "Command_Handler.h"
 
 #include "FreeRTOSConfig.h"
 
@@ -33,7 +34,7 @@ void blinkyTask(void *dummy){
 
 void vGeneralTaskInit(void){
 	xTaskCreate(blinkyTask,
-		(const signed char *)"blinkyTask",
+		(const char * const)"blinkyTask",
 		configMINIMAL_STACK_SIZE,
 		NULL,                 // pvParameters
 		tskIDLE_PRIORITY + 1, // uxPriority
@@ -45,6 +46,7 @@ int main(void)
 {
 	init_delay();
 	init_ADC();
+	UART_Command_Handler_init();
 
 	vGeneralTaskInit();
 

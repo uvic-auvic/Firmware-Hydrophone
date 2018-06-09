@@ -7,6 +7,7 @@
 
 #include "stm32f4xx_rcc.h"
 #include "delay.h"
+#include "UART_Controller.h"
 
 #define GPIO_AFRH_AFRH9_0 (0x00000010)
 #define GPIO_AFRH_AFRH9_1 (0x00000020)
@@ -56,10 +57,11 @@
 
 #define ADC_MAX_READINGS (1024)
 #define ADC_CHANNEL_COUNT (4)
+#define ADC_BUFFER_SIZE (ADC_MAX_READINGS * ADC_CHANNEL_COUNT)
 
-uint16_t ADC_Buffer[ADC_MAX_READINGS * ADC_CHANNEL_COUNT + 1];
-static uint16_t buffer_size = ADC_MAX_READINGS * ADC_CHANNEL_COUNT + 1;
-static uint8_t ADC_mutex = 1;
+uint16_t ADC_Buffer[ADC_BUFFER_SIZE + 1 + 1];
+static uint16_t buffer_size = ADC_BUFFER_SIZE + 1;
+static volatile uint8_t ADC_mutex = 1;
 
 static void configure_ADC_GPIO() {
 	/* Configure CS (Chip Select) Pin as output pin PB0 and set it high */
@@ -265,7 +267,7 @@ static void configure_EOC_DMA() {
 }
 
 extern void start_ADC_conversions() {
-	/* Wait for DMA to be disabled */
+	/* Wait for previous ADC conversions to finish */
 	while(!ADC_mutex);
 	ADC_mutex = 0;
 
@@ -297,6 +299,21 @@ extern void start_ADC_conversions() {
 	TIM3->CR1 |= TIM_CR1_CEN;
 }
 
+extern uint16_t get_ADC_buffer_size() {
+	return buffer_size * 2;
+}
+
+extern void transmit_ADC_readings() {
+	/* Initiate ADC Conversions */
+	start_ADC_conversions();
+
+	/* Wait for ADC conversions to finish */
+	while(!ADC_mutex);
+
+	/* Send data out on UART */
+	UART_push_out_len((char*)(&ADC_Buffer[1]), buffer_size);
+}
+
 extern void init_ADC() {
 	delay_ms(10);
 	configure_ADC_GPIO();
@@ -306,7 +323,7 @@ extern void init_ADC() {
 	configure_RD_EOC_TIM();
 	configure_EOC_DMA();
 
-	while(1) start_ADC_conversions();
+	ADC_Buffer[ADC_BUFFER_SIZE + 1] = ('\r' << 8) | ('\n');
 }
 
 void DMA2_Stream4_IRQHandler() {
