@@ -57,8 +57,8 @@
 #define ADC_MAX_READINGS (1024)
 #define ADC_CHANNEL_COUNT (4)
 
-uint16_t ADC_Buffer[ADC_MAX_READINGS * ADC_CHANNEL_COUNT];
-static uint16_t buffer_size = ADC_MAX_READINGS * ADC_CHANNEL_COUNT;
+uint16_t ADC_Buffer[ADC_MAX_READINGS * ADC_CHANNEL_COUNT + 1];
+static uint16_t buffer_size = ADC_MAX_READINGS * ADC_CHANNEL_COUNT + 1;
 static uint8_t ADC_mutex = 1;
 
 static void configure_ADC_GPIO() {
@@ -241,7 +241,7 @@ static void configure_EOC_DMA() {
 	DMA2_Stream4->M0AR = (uint32_t)ADC_Buffer;
 
 	/* Set the number of data items to be transferred */
-	DMA2_Stream4->NDTR = 17;
+	DMA2_Stream4->NDTR = buffer_size;
 
 	/* Select DMA Channel 6 */
 	DMA2_Stream4->CR |= DMA_SxCR_CHSEL_2 | DMA_SxCR_CHSEL_1;
