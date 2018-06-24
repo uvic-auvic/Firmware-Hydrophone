@@ -5,6 +5,7 @@
  *      Author: Lyden
  */
 
+#include "ADC.h"
 #include "stm32f4xx_rcc.h"
 #include "delay.h"
 #include "UART_Controller.h"
@@ -47,19 +48,11 @@
 #define RD_DUTY (EXT_CLOCK_PERIOD + (EXT_CLOCK_PERIOD/2))
 #define RD_PSC (0)
 
-// Defines below are for testing purposes (I can't see really fast things!)
-/*#define RD_PERIOD 	(2)
-#define RD_DUTY   	(1)
-#define RD_PSC		(0)
-#define CONVST_PSC (999)
-#define CONVST_PERIOD (2)
-#define CONVST_DUTY (1)*/
-
-#define ADC_MAX_READINGS (1024)
+#define ADC_MAX_READINGS (4096)
 #define ADC_CHANNEL_COUNT (4)
 #define ADC_BUFFER_SIZE (ADC_MAX_READINGS * ADC_CHANNEL_COUNT)
 
-uint16_t ADC_Buffer[ADC_BUFFER_SIZE + 1 + 1];
+uint16_t ADC_Buffer[ADC_BUFFER_SIZE + 1];
 static uint16_t buffer_size = ADC_BUFFER_SIZE + 1;
 static volatile uint8_t ADC_mutex = 1;
 
@@ -110,14 +103,14 @@ static void configure_ADC_IC() {
 	GPIOC->ODR = 0x000F;
 
 	/* Delay a bit */
-	delay_ticks(2); // 20 ns
+	delay_ticks(70); // 1 us
 
 	/* Drive WR high and CS high */
 	GPIOB->BSRRL = GPIO_BSRR_BS_2;
 	GPIOB->BSRRL = GPIO_BSRR_BS_0;
 
 	/* Delay a bit */
-	delay_ticks(2); // 20 ns
+	delay_ticks(70); // 1 us
 
 	/* Return GPIOC to inputs */
 	GPIOC->MODER &=
@@ -300,18 +293,44 @@ extern void start_ADC_conversions() {
 }
 
 extern uint16_t get_ADC_buffer_size() {
-	return buffer_size * 2;
+	return (buffer_size - 1) * 2;
 }
 
-extern void transmit_ADC_readings() {
+extern uint16_t set_ADC_buffer_size(uint16_t size) {
+	if(ADC_mutex) {
+		uint16_t potential_size = size / 2;
+
+		/* Lock DMA */
+		ADC_mutex = 0;
+
+		/* Limit size to max size */
+		if(potential_size > ADC_BUFFER_SIZE)
+		{
+			potential_size = ADC_BUFFER_SIZE;
+		}
+
+		/* Update buffer size. User specifies in bytes.
+		 * Must be a multiple of 4 bytes. Add one for garbage
+		 * value in first DMA transfer */
+		buffer_size = (((size / 2) / 4) * 4) + 1 ;
+
+		/* Update DMA buffer size */
+		DMA2_Stream4->NDTR = buffer_size;
+	}
+
+	return (buffer_size - 1) * 2;
+}
+
+extern uint8_t* get_ADC_buffer() {
+	return &(ADC_Buffer[1]);
+}
+
+extern void complete_ADC_conversions() {
 	/* Initiate ADC Conversions */
 	start_ADC_conversions();
 
-	/* Wait for ADC conversions to finish */
+	/* Wait for it to finish */
 	while(!ADC_mutex);
-
-	/* Send data out on UART */
-	UART_push_out_len((char*)(&ADC_Buffer[1]), buffer_size);
 }
 
 extern void init_ADC() {
@@ -322,8 +341,6 @@ extern void init_ADC() {
 	configure_CONVST_PWM();
 	configure_RD_EOC_TIM();
 	configure_EOC_DMA();
-
-	ADC_Buffer[ADC_BUFFER_SIZE + 1] = ('\r' << 8) | ('\n');
 }
 
 void DMA2_Stream4_IRQHandler() {

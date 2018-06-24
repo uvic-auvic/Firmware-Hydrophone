@@ -5,16 +5,17 @@
  *      Author: Lyden
  */
 
+#include "delay.h"
 #include "stm32f4xx_rcc.h"
 
 /* 16 MHz internal clock */
 /*#define DELAY_TIM_PRESCALER_US (16 - 1)
 #define DELAY_TIM_PRESCALER_MS (16000 - 1)*/
 
-/* 100 MHz internal clock */
-#define DELAY_TIM_PRESCALER_US (100 - 1)
+/* 67.6 MHz internal clock */
+#define DELAY_TIM_PRESCALER_US (68 - 1)
 #define DELAY_MULTIPLIER_US (1)
-#define DELAY_TIM_PRESCALER_MS (50000 - 1)
+#define DELAY_TIM_PRESCALER_MS (33800 - 1)
 #define DELAY_MULTIPLIER_MS (2)
 
 static void configure_delay_timer() {

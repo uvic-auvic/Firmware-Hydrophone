@@ -1,3 +1,10 @@
+*.un~
+*.un
+*~
+*.swp
+*.pyc
+*.cfg
+
 # Object files
 *.o
 *.ko

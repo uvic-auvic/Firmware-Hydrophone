@@ -28,7 +28,7 @@ void blinkyTask(void *dummy){
 	while(1){
 
 		GPIOB->ODR ^= GPIO_Pin_12;
-		vTaskDelay(500);
+		vTaskDelay(200);
 	}
 }
 
