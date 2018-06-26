@@ -194,14 +194,19 @@ void Command_Handler() {
 		}
 
 		/* Set ADC Buffer size. Returns new size */
-		else if(strncmp(commandString, "DS", 2) == 0 && (strnlen(commandString, 6) == 6)) {
-			int data_size = asciiToInt(&(commandString[2]), 4);
+		else if(strncmp(commandString, "DS", 2) == 0 && (strnlen(commandString, 7) == 7)) {
+			int data_size = asciiToInt(&(commandString[2]), 5);
 			if(data_size < 0) {
 				memcpy(outputString, &ADC_message_header.total_data_size, 2);
 				strncpy(&(outputString[2]), "\r\n", 2);
 				UART_push_out_len(outputString, 4);
 			}
 			else {
+				/* Make sure data isn't too big */
+				if(data_size > (0xFF * ADC_message_header.packet_size)) {
+					data_size = 0xFF * ADC_message_header.packet_size;
+				}
+
 				/* Update ADC buffer size */
 				uint16_t set_size = set_ADC_buffer_size(data_size);
 
@@ -227,8 +232,8 @@ void Command_Handler() {
 		}
 
 		/* Set packet size. Return set packet size */
-		else if(strncmp(commandString, "PS", 2) == 0 && (strnlen(commandString, 6) == 6)) {
-			int poss_packet_size = asciiToInt(&(commandString[2]), 4);
+		else if(strncmp(commandString, "PS", 2) == 0 && (strnlen(commandString, 7) == 7)) {
+			int poss_packet_size = asciiToInt(&(commandString[2]), 5);
 
 			/* Make sure packet size is a multiple of 4 */
 			poss_packet_size -= (poss_packet_size % 4);
@@ -240,7 +245,12 @@ void Command_Handler() {
 
 			/* Make sure packet size isn't invalid */
 			if(poss_packet_size <= 0) {
-				poss_packet_size = packet_size;
+				poss_packet_size = ADC_message_header.packet_size;
+			}
+
+			/* Make sure packet size isn't too small */
+			if(poss_packet_size < (ADC_message_header.total_data_size / 0xFF)) {
+				poss_packet_size = ADC_message_header.total_data_size / 0xFF;
 			}
 
 			/* Update the ADC message header */

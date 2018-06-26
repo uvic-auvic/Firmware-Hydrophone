@@ -86,6 +86,7 @@ static void configure_ADC_GPIO() {
 
 	/* Configure the ADC digital input pins (all inputs by default) */
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN; /* Enable clock for C pins */
+	GPIOC->PUPDR |= GPIO_PUPDR_PUPDR14_1 | GPIO_PUPDR_PUPDR15_1; /* Pull down pins PD14 and PD15 */
 }
 
 /* Configure the ADC to use 4 analog channels */
@@ -296,12 +297,16 @@ extern uint16_t get_ADC_buffer_size() {
 	return (buffer_size - 1) * 2;
 }
 
+/* size is in bytes. buffer_size is in half-words */
 extern uint16_t set_ADC_buffer_size(uint16_t size) {
 	if(ADC_mutex) {
-		uint16_t potential_size = size / 2;
+		uint16_t potential_size;
 
 		/* Lock DMA */
 		ADC_mutex = 0;
+
+		/* Get the number of half-words */
+		potential_size = size / 2;
 
 		/* Limit size to max size */
 		if(potential_size > ADC_BUFFER_SIZE)
@@ -310,12 +315,15 @@ extern uint16_t set_ADC_buffer_size(uint16_t size) {
 		}
 
 		/* Update buffer size. User specifies in bytes.
-		 * Must be a multiple of 4 bytes. Add one for garbage
+		 * Must be a multiple of 4 half-words. Add one for garbage
 		 * value in first DMA transfer */
-		buffer_size = (((size / 2) / 4) * 4) + 1 ;
+		buffer_size = potential_size - (potential_size % 4) + 1;
 
 		/* Update DMA buffer size */
 		DMA2_Stream4->NDTR = buffer_size;
+
+		/* Unlock DMA */
+		ADC_mutex = 1;
 	}
 
 	return (buffer_size - 1) * 2;
