@@ -157,7 +157,7 @@ void USART2_IRQHandler() {
 
 			} else {
 				inputString[inputStringIndex] = tempInput[0];
-				inputStringIndex = (inputStringIndex + 1) & (MAX_BUFFER_DATA -1);
+				inputStringIndex = (inputStringIndex + 1) % MAX_BUFFER_DATA;
 			}
 
 		}
