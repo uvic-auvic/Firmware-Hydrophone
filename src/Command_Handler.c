@@ -8,6 +8,7 @@
 #include "FreeRTOS.h"
 #include "FreeRTOSConfig.h"
 #include "task.h"
+#include "semphr.h"
 #include "UART_Controller.h"
 #include "Buffer.h"
 #include "ADC.h"
@@ -17,7 +18,7 @@
 #define DEVICE_ID ("Hydrophones v1.0\r\n\0")
 #define MAX_OUTPUT_SIZE (32)
 
-uint8_t data_sending = 0;
+SemaphoreHandle_t  data_sending = NULL;
 
 typedef struct Message_Header {
 	uint32_t CRC32;
@@ -94,6 +95,8 @@ void Command_Handler() {
 	}
 	ADC_message_header.packet_idx = 0;
 
+	data_sending = xSemaphoreCreateMutex();
+
 	while(1) {
 		//it's important that this is while, if the task is accidentally awaken it
 		//can't execute without having at least one item the input buffer
@@ -128,7 +131,7 @@ void Command_Handler() {
 			/* Check if we're done (send nothing but the header if we are) */
 			else if(ADC_message_header.packet_idx == ADC_message_header.packet_count) {
 				ADC_message_header.packet_size = 0;
-				data_sending = 0;
+				xSemaphoreGive(data_sending);
 			}
 
 			/* Compute the CRC */
@@ -165,8 +168,7 @@ void Command_Handler() {
 //			/* Start and complete conversions */
 //			complete_ADC_conversions();
 
-			while(!data_ready);
-			data_sending = 1;
+			xSemaphoreTake(data_sending, 500);
 			memcpy(ADC_Buffer, detected_data, (4096 * 4) + 1);
 
 			/* Start at packet 0 */
