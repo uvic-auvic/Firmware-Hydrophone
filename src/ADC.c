@@ -52,9 +52,10 @@
 #define ADC_CHANNEL_COUNT (4)
 #define ADC_BUFFER_SIZE (ADC_MAX_READINGS * ADC_CHANNEL_COUNT)
 
+
 uint16_t ADC_Buffer[ADC_BUFFER_SIZE + 1];
-static uint16_t buffer_size = ADC_BUFFER_SIZE + 1;
-static volatile uint8_t ADC_mutex = 1;
+uint16_t buffer_size = ADC_BUFFER_SIZE + 1;
+volatile uint8_t ADC_mutex = 1;
 
 static void configure_ADC_GPIO() {
 	/* Configure CS (Chip Select) Pin as output pin PB0 and set it high */

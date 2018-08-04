@@ -11,10 +11,13 @@
 #include "UART_Controller.h"
 #include "Buffer.h"
 #include "ADC.h"
+#include "pinger_detection.h"
 
 #define MAX_PACKET_SIZE (4080)
 #define DEVICE_ID ("Hydrophones v1.0\r\n\0")
 #define MAX_OUTPUT_SIZE (32)
+
+uint8_t data_sending = 0;
 
 typedef struct Message_Header {
 	uint32_t CRC32;
@@ -125,6 +128,7 @@ void Command_Handler() {
 			/* Check if we're done (send nothing but the header if we are) */
 			else if(ADC_message_header.packet_idx == ADC_message_header.packet_count) {
 				ADC_message_header.packet_size = 0;
+				data_sending = 0;
 			}
 
 			/* Compute the CRC */
@@ -158,8 +162,12 @@ void Command_Handler() {
 
 		/* Command to start ADC converions and send first packet */
 		else if(strncmp(commandString, "ADCDR", 5) == 0) {
-			/* Start and complete conversions */
-			complete_ADC_conversions();
+//			/* Start and complete conversions */
+//			complete_ADC_conversions();
+
+			while(!data_ready);
+			data_sending = 1;
+			memcpy(ADC_Buffer, detected_data, (4096 * 4) + 1);
 
 			/* Start at packet 0 */
 			ADC_message_header.packet_idx = 0;
@@ -265,6 +273,14 @@ void Command_Handler() {
 			memcpy(outputString, &packet_size, 2);
 			strncpy(&(outputString[2]), "\r\n", 2);
 			UART_push_out_len(outputString, 4);
+		}
+
+		else if(strncmp(commandString, "EGTH", 4) == 0 && strlen(commandString) == 8) {
+
+			energy_threshold = (uint16_t)asciiToInt(&commandString[4], 4);
+			char output[5] = {};
+			itoa(energy_threshold, output, 10);
+			UART_push_out_len(output, 4);
 		}
 
 		/* Not a valid command. Return Error. */

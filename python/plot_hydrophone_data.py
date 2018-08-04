@@ -8,7 +8,7 @@ from stm32_library import stm32_crc32
 print "What port is the hydrophone on?"
 port_string = raw_input()
 
-hydro_serial = Serial(port_string, 115200, timeout=1)
+hydro_serial = Serial(port_string, 115200)
 hydro_serial.write("RID\n")
 device_id = hydro_serial.readline()
 if device_id != "Hydrophones v1.0\r\n":

@@ -47,6 +47,7 @@ int main(void)
 	init_delay();
 	init_ADC();
 	UART_Command_Handler_init();
+	init_pinger_detection();
 
 	vGeneralTaskInit();
 
