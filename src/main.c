@@ -14,33 +14,12 @@
 #include "ADC.h"
 #include "delay.h"
 #include "Command_Handler.h"
+#include "pinger_detection.h"
 
 #include "FreeRTOSConfig.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
-
-void blinkyTask(void *dummy){
-	/* Configure blinky LED for output mode */
-	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN; /* Enable clock for B pins */
-	GPIOB->MODER |= GPIO_MODER_MODER12_0; /* Output mode */
-
-	while(1){
-
-		GPIOB->ODR ^= GPIO_Pin_12;
-		vTaskDelay(200);
-	}
-}
-
-void vGeneralTaskInit(void){
-	xTaskCreate(blinkyTask,
-		(const char * const)"blinkyTask",
-		configMINIMAL_STACK_SIZE,
-		NULL,                 // pvParameters
-		tskIDLE_PRIORITY + 1, // uxPriority
-		NULL              ); // pvCreatedTask */
-
-}
 
 int main(void)
 {
@@ -48,8 +27,6 @@ int main(void)
 	init_ADC();
 	UART_Command_Handler_init();
 	init_pinger_detection();
-
-	vGeneralTaskInit();
 
 	vTaskStartScheduler();
 

@@ -4,7 +4,8 @@
  *  Created on: Jun 8, 2018
  *      Author: Poornachander
  */
-
+#include <stdlib.h>
+#include <math.h>
 #include "FreeRTOS.h"
 #include "FreeRTOSConfig.h"
 #include "task.h"
@@ -12,11 +13,16 @@
 #include "UART_Controller.h"
 #include "Buffer.h"
 #include "ADC.h"
-#include "pinger_detection.h"
+//#include "pinger_detection.h"
 
 #define MAX_PACKET_SIZE (4080)
 #define DEVICE_ID ("Hydrophones v1.0\r\n\0")
 #define MAX_OUTPUT_SIZE (32)
+
+#define ADC_center_value (32767)
+
+uint16_t energy_threshold = 2000;
+uint16_t detected_data[(4096 * 4) + 1] = {};
 
 SemaphoreHandle_t  data_sending = NULL;
 
@@ -63,7 +69,7 @@ static inline uint32_t reverse_bit_order(uint32_t input_word) {
  */
 static uint32_t CRC32(uint32_t* data, uint16_t data_size) {
 	uint16_t word_size = data_size / 4;
-	uint8_t extra_bytes = data_size % 4;
+	//uint8_t extra_bytes = data_size % 4; //Unused variable
 
 	/* Reset the CRC unit */
 	CRC->CR = CRC_CR_RESET;
@@ -83,7 +89,8 @@ void Command_Handler() {
 	char outputString[MAX_OUTPUT_SIZE];
 	Message_Header_t ADC_message_header;
 	uint16_t packet_size = MAX_PACKET_SIZE;
-	uint8_t* ADC_Buffer_ptr = get_ADC_buffer();
+	//uint8_t* ADC_Buffer_ptr = get_ADC_buffer();
+	uint8_t* ADC_Buffer_ptr = (uint8_t*)detected_data;
 
 	/* Initialize ADC data read message header */
 	strncpy((char*)ADC_message_header.command, "DR", 2);
@@ -95,15 +102,43 @@ void Command_Handler() {
 	}
 	ADC_message_header.packet_idx = 0;
 
+	//Initialize pinger detecting variables
 	data_sending = xSemaphoreCreateMutex();
+	detected_data[0] = 5000;
+	detected_data[1] = 5000;
+	detected_data[2] = 5000;
+
+	//	/* Configure blinky LED for output mode */
+	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN; /* Enable clock for B pins */
+	GPIOB->MODER |= GPIO_MODER_MODER12_0; /* Output mode */
+
+	float signal_energy = 0;
 
 	while(1) {
 		//it's important that this is while, if the task is accidentally awaken it
 		//can't execute without having at least one item the input buffer
 		while(inputBuffer.size == 0){
 
+			if ( xSemaphoreTake(data_sending, 30000) == pdTRUE) {
+
+				GPIOB->ODR ^= GPIO_Pin_12;
+
+				complete_ADC_conversions();
+
+				for(uint16_t i = 1; i < ((4096 * 4) + 1); i = i + 4) {
+					signal_energy += (float)(abs((int16_t)(ADC_Buffer[i] - (int16_t)ADC_center_value))) / 65536;
+				}
+
+				if(signal_energy > energy_threshold) {
+					memcpy(detected_data, ADC_Buffer, (4096 * 4) + 1);
+				}
+
+				signal_energy = 0;
+				xSemaphoreGive(data_sending);
+			}
+
 			//sleeps the task until it is notified by the UART controller
-			ulTaskNotifyTake( pdTRUE, portMAX_DELAY);
+			ulTaskNotifyTake( pdTRUE, pdMS_TO_TICKS(100));
 
 		}
 
@@ -168,8 +203,7 @@ void Command_Handler() {
 //			/* Start and complete conversions */
 //			complete_ADC_conversions();
 
-			xSemaphoreTake(data_sending, 500);
-			memcpy(ADC_Buffer, detected_data, (4096 * 4) + 1);
+			xSemaphoreTake(data_sending, 2000);
 
 			/* Start at packet 0 */
 			ADC_message_header.packet_idx = 0;
@@ -278,11 +312,11 @@ void Command_Handler() {
 		}
 
 		else if(strncmp(commandString, "EGTH", 4) == 0 && strlen(commandString) == 8) {
-
-			energy_threshold = (uint16_t)asciiToInt(&commandString[4], 4);
-			char output[5] = {};
-			itoa(energy_threshold, output, 10);
-			UART_push_out_len(output, 4);
+#warning "Uncomment"
+//			energy_threshold = (uint16_t)asciiToInt(&commandString[4], 4);
+//			char output[5] = {};
+//			itoa(energy_threshold, output, 10);
+//			UART_push_out_len(output, 4);
 		}
 
 		/* Not a valid command. Return Error. */
@@ -311,4 +345,5 @@ extern void UART_Command_Handler_init() {
 
 	/* Enable CRC clock */
 	RCC->AHB1ENR |= RCC_AHB1ENR_CRCEN;
+
 }
