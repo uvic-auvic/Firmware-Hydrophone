@@ -43,7 +43,7 @@
 #define CONVST_DUTY (CONVERSION_TIME * EXT_CLOCK_PERIOD)
 #define CONVST_PSC (0)
 
-/* RD PWM with 50% duty, 3.33 MHz frequency */
+/* RD(Read) PWM with 50% duty, 3.33 MHz frequency */
 #define RD_PERIOD (0xFFFF)
 #define RD_DUTY (EXT_CLOCK_PERIOD + (EXT_CLOCK_PERIOD/2))
 #define RD_PSC (0)
@@ -101,7 +101,7 @@ static void configure_ADC_IC() {
 	GPIOB->BSRRH = GPIO_BSRR_BR_0 >> 16;
 
 	/* Write configuration to GPIO C */
-	GPIOC->ODR = 0x000F;
+	GPIOC->ODR = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_2 | GPIO_Pin_3;
 
 	/* Delay a bit */
 	delay_ticks(70); // 1 us
